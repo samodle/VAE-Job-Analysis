@@ -1,0 +1,15 @@
+def sens(y_true, y_pred):
+	mask_true = K.cast(K.not_equal(y_true, mask_value), K.floatx())
+
+	y_pred = mask_true*K.round(y_pred)
+	y_true = mask_true*y_true
+	loc_1_vec = K.sum(y_true, axis = 0)
+
+
+	acc_check = K.cast(K.equal(y_true, y_pred), K.floatx())
+
+	loss_1 = K.sum(y_true*acc_check, axis = 0)/(loc_1_vec + K.epsilon())
+	loss_1 = K.mean(tf.boolean_mask(loss_1, tf.greater(loc_1_vec, 0)))
+	acc_out = tf.cond(tf.math.is_nan(loss_1),lambda:0.0, lambda: loss_1)
+
+	return acc_out

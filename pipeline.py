@@ -11,6 +11,7 @@ import numpy as np
 import generator as gen
 from get_model import get_simple_model
 from custom_losses import masked_crossentropy
+from keras.callbacks import *
 
 # Parameters
 ##############
@@ -51,6 +52,16 @@ def pad_array(text, max_len, num_words):
 	else:
 		return text 
 
+class Encoder_CheckPoint(ModelCheckpoint):
+
+	def __init__(self, singlemodel, *args, **kwargs):
+		self.singlemodel = singlemodel
+		super(Encoder_CheckPoint, self).__init__(*args, **kwargs)
+	def on_epoch_end(self, epoch, logs=None):
+		self.model = self.singlemodel
+		super(Encoder_CheckPoint, self).on_epoch_end(epoch, logs)
+
+
 #Create directory to hold .h5 files for training/analysis
 try:
 	os.mkdir('../Data')
@@ -84,7 +95,7 @@ for file in data_files:
 	for i in range(len(desc)):
 
 		#pick a filename
-		fn = '../Data/' + file.split('/')[-1].split('.')[0] + '_{}.h5'
+		fn = '../Data/' + file.split('/')[-1].split('.')[0] + '_{}.h5'.format(i)
 
 		#convert the text to a matrix
 		out = t.texts_to_matrix(desc[i])
@@ -92,11 +103,14 @@ for file in data_files:
 		#padding and normalize the arrays
 		out = pad_array(out, max_len, num_words)
 
+		#cast array as int to save space
+		out = out.astype(np.int8)
+
 		#create a h5 files that contains the matrix representation of the text
 		hf = h5py.File(fn, 'w')
 
 		#fill the h5 file with the data
-		hf.create_dataset('data', data=out)
+		hf.create_dataset('data', data=out, compression="gzip")
 
 		#close the h5 file
 		hf.close()
@@ -119,24 +133,30 @@ validation_gen = gen.Text_Generator(validation_files, input_shape = (max_len,num
 #use the get_simple_model method to obtain model
 AE_model, Encoder_model = get_simple_model(timesteps = max_len, input_dim = num_words, latent_dim = latent_dim)
 
-#create folder for model storage 
+#print the model summary
+print(AE_model.summary())
 
+#create folder for model storage 
 try:
-	os.makdir('./Models')
+	os.mkdir('../Models')
 except:
 	print('Models Directory Already Exists')
 
 #create callbacks that can let us save models midstream
-cb = keras.callbacks.ModelCheckpoint('./Models/LSTM_VAE', monitor='val_loss', verbose = 1, save_best_only=True)
+cb = keras.callbacks.ModelCheckpoint('../Models/LSTM_VAE.h5', monitor='val_loss', verbose = 1, save_best_only=True)
+cb_encoder = Encoder_CheckPoint(Encoder_model, '../Models/Encoder.h5', monitor='val_loss', verbose = 1, save_best_only=True)
+
+#create a loss function based on the num of words
+loss = masked_crossentropy(num_words)
 
 #compile the model
-model.compile(optimizer='adam', loss=masked_crossentropy)
+AE_model.compile(optimizer='adam', loss=loss)
 
 #fit the model with the generators
-history = AE_model.fit_generator(generator=training_gen, validation_data=validation_gen, use_multiprocessing = mp, epochs = epochs,  callbacks=[cb], workers = 8)
+history = AE_model.fit_generator(generator=training_gen, validation_data=validation_gen, epochs = epochs,  callbacks=[cb, cb_encoder])
 
-
-
+#pickle the history to see the progress
+pickle.dump( history, open( "../Models/history.pkl", "wb" ) )
 		
 
 

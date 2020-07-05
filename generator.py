@@ -18,6 +18,7 @@ class Text_Generator(keras.utils.Sequence):
 		self.indexes = np.arange(len(self.file_names))
 		np.random.shuffle(self.indexes)
 		self.ind_val = 0
+		self.input_shape = input_shape
 
 	def __len__(self):
 		'Denotes the number of batches per epoch based on the number of augmentations'
@@ -52,7 +53,7 @@ class Text_Generator(keras.utils.Sequence):
 		'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
 		# Initialization
 
-		X = np.zeros((self.batch_size,input_shape[0], input_shape[1]))
+		X = np.zeros((self.batch_size, self.input_shape[0], self.input_shape[1]))
 
 		for i, ID in enumerate(list_IDs_temp):
 

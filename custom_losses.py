@@ -19,20 +19,20 @@ def masked_crossentropy(dim):
 
 		loss = K.categorical_crossentropy(true, pred)
 
-		return K.mean(loss)
+		return tf.cond(tf.is_nan(K.mean(loss)), lambda : 0.0, lambda : K.mean(loss))
 	return f
 
 
 
 if __name__ == '__main__':
-	x = np.array([[[0, 1, 0], [0,1,0]], [[0, 1, 0], [-1,-1,-1]]])
-	y = np.array([[[0, 1, 0], [0,1,0]], [[0, 1, 0], [0,1,0]]])
+	x = np.array([[[0,0,0]]])
+	y = np.array([[[0,1,0]]])
 
 	print(x.shape)
 
 	x = K.constant(x)
 	y = K.constant(y)
 
-	loss = masked_crossentropy(x,y)
+	loss = masked_crossentropy(3)(x,y)
 	print(K.eval(loss))
 

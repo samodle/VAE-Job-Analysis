@@ -20,6 +20,7 @@ def get_simple_model(timesteps = 2500, input_dim = 100, latent_dim = 25):
 	LSTM_VAE = Model(inputs, decoded)
 	vae_loss_ = vae_loss(z_mean, z_log_sigma)
 	LSTM_VAE.add_loss(vae_loss_)
+	LSTM_VAE.add_metric(vae_loss_, name = 'vae_loss')
 	encoder = Model(inputs, z)
 
 	return LSTM_VAE, encoder
